@@ -2,7 +2,8 @@ package main
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+	//_ "github.com/mattn/go-sqlite3"
+	_ "github.com/lib/pq"
 	"log"
 	"time"
 )
@@ -10,16 +11,16 @@ import (
 //Initialsing database
 func initDB(state *RuntimeState) (err error) {
 
-	state.dbType = "sqlite3"
-	state.db, err = sql.Open("sqlite3", state.Config.Base.StorageURL)
+	state.dbType = "postgres"
+	state.db, err = sql.Open("postgres", state.Config.Base.StorageURL)
 	if err != nil {
 		return err
 	}
 	if true {
-		sqlStmt := `create table if not exists pending_requests (id INTEGER PRIMARY KEY AUTOINCREMENT, username text not null, groupname text not null, time_stamp int not null);`
+		sqlStmt := `create table if not exists pending_requests (id SERIAL PRIMARY KEY, username text not null, groupname text not null, time_stamp int not null);`
 		_, err = state.db.Exec(sqlStmt)
 		if err != nil {
-			log.Printf("init sqlite3 err: %s: %q\n", err, sqlStmt)
+			log.Printf("init postgres err: %s: %q\n", err, sqlStmt)
 			return err
 		}
 	}
@@ -30,7 +31,7 @@ func initDB(state *RuntimeState) (err error) {
 //insert a request into DB
 func insertRequestInDB(username string, groupnames []string, state *RuntimeState) error {
 
-	stmtText := "insert into pending_requests(username, groupname, time_stamp) values (?,?,?);"
+	stmtText := "insert into pending_requests(username, groupname, time_stamp) values ($1,$2,$3);"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
@@ -59,7 +60,7 @@ func insertRequestInDB(username string, groupnames []string, state *RuntimeState
 //delete the request after approved or declined
 func deleteEntryInDB(username string, groupname string, state *RuntimeState) error {
 
-	stmtText := "delete from pending_requests where username= ? and groupname= ?;"
+	stmtText := "delete from pending_requests where username=$1 and groupname= $2;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
@@ -77,7 +78,7 @@ func deleteEntryInDB(username string, groupname string, state *RuntimeState) err
 //deleting all groups in DB which are deleted from Target LDAP
 func deleteEntryofGroupsInDB(groupnames []string, state *RuntimeState) error {
 
-	stmtText := "delete from pending_requests where groupname= ?;"
+	stmtText := "delete from pending_requests where groupname= $1;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
@@ -96,7 +97,7 @@ func deleteEntryofGroupsInDB(groupnames []string, state *RuntimeState) error {
 
 //Search for a particular request made by a user (or) a group. (for my_pending_actions)
 func findrequestsofUserinDB(username string, state *RuntimeState) ([]string, bool, error) {
-	stmtText := "select groupname from pending_requests where username=?;"
+	stmtText := "select groupname from pending_requests where username=$1;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")
@@ -128,7 +129,7 @@ func findrequestsofUserinDB(username string, state *RuntimeState) ([]string, boo
 
 //looks in the DB if the entry already exists or not
 func entryExistsorNot(username string, groupname string, state *RuntimeState) bool {
-	stmtText := "select * from pending_requests where username=? and groupname=?;"
+	stmtText := "select * from pending_requests where username=$1 and groupname=$2;"
 	stmt, err := state.db.Prepare(stmtText)
 	if err != nil {
 		log.Print("Error Preparing statement")

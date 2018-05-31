@@ -167,6 +167,7 @@ func main() {
 
 	state, err := loadConfig(*configFilename)
 	if err != nil {
+		log.Println("Missing config file")
 		panic(err)
 	}
 	var openidConfigFilename = state.Config.Base.OpenIDCConfigFilename //"/etc/openidc_config_keymaster.yml"
@@ -174,6 +175,7 @@ func main() {
 	// if you alresy use the context:
 	simpleOidcAuth, err := authhandler.NewSimpleOIDCAuthFromConfig(&openidConfigFilename, nil)
 	if err != nil {
+		log.Println("Missing openidConfig file")
 		panic(err)
 	}
 	authSource = simpleOidcAuth
